@@ -5,6 +5,7 @@ library(httr)
 library(tidyr)
 library(dplyr)
 library(lubridate)
+library(stringr)
 
 
 ls("package:ineapir")
@@ -93,8 +94,16 @@ pib_data <- get_data_table(
   )%>%
   filter(Part2 == "Datos ajustados de estacionalidad y calendario")%>%
   select (-c(Part1,T3_TipoDato,T3_Periodo, Anyo ))%>%
-  mutate(Fecha = as.Date(ymd_hms(Fecha)))
+  mutate(
+    Fecha = as.Date(ymd_hms(Fecha)),
+    Part3 = ifelse(Part3 %in% c("VABpb Servicios", "VABpb Industria"), Part4, Part3),
+    Part4 = Part4 %>%
+      str_replace("Industria manufacturera \\(C, CNAE 2009\\)", "") %>%
+      str_trim() %>%
+      ifelse(. %in% c("Dato base", "Variación trimestral", "Variación anual"), ., "") %>%
+      ifelse(. == "", Part5, .),
+    T3_Unidad = ifelse(T3_Unidad == "Euros", "Millones Euros", T3_Unidad)
+  ) %>%
+  select(-c(T3_Escala, Part5))
 
 
-# Afficher les premières lignes des données
-head(pib_data)
