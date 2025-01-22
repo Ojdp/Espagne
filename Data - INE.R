@@ -99,11 +99,55 @@ pib_data <- get_data_table(
     Part3 = ifelse(Part3 %in% c("VABpb Servicios", "VABpb Industria"), Part4, Part3),
     Part4 = Part4 %>%
       str_replace("Industria manufacturera \\(C, CNAE 2009\\)", "") %>%
+      str_replace("Precios corrientes", "") %>%  # Correction ici pour supprimer "Precios corrientes"
       str_trim() %>%
       ifelse(. %in% c("Dato base", "Variación trimestral", "Variación anual"), ., "") %>%
       ifelse(. == "", Part5, .),
+    Part4 = str_replace(Part4, "Variación trimestral\\. Precios corrientes\\.", "Variación trimestral"),
+    Part4 = str_replace(Part4, "Variación anual\\. Precios corrientes\\.", "Variación anual"),
+    Part4 = str_replace(Part4, "Dato base\\. Precios corrientes\\.", "Dato base"),
     T3_Unidad = ifelse(T3_Unidad == "Euros", "Millones Euros", T3_Unidad)
   ) %>%
-  select(-c(T3_Escala, Part5))
+  arrange(Fecha)%>%
+  group_by(Part3)%>%
+  group_by(Part4)%>%
+  select(-c(T3_Escala, Part5, Part2))
+
+pib_data_wider <- pib_data %>%
+  filter(Part4 == "Variación trimestral") %>%  # Filtrer uniquement les lignes correspondantes
+  pivot_wider(
+    names_from = Part4,    # Transformer les valeurs de Part4 en noms de colonnes
+    values_from = Valor    # Les valeurs associées proviennent de la colonne Valor
+  )
+
+pib_data_wider2 <- pib_data %>%
+  filter(Part4 == "Variación anual") %>%  # Filtrer uniquement les lignes correspondantes
+  pivot_wider(
+    names_from = Part4,    # Transformer les valeurs de Part4 en noms de colonnes
+    values_from = Valor    # Les valeurs associées proviennent de la colonne Valor
+  )
+
+pib_data_wider3 <- pib_data %>%
+  filter(Part4 == "Dato base") %>%  # Filtrer uniquement les lignes correspondantes
+  pivot_wider(
+    names_from = Part4,    # Transformer les valeurs de Part4 en noms de colonnes
+    values_from = Valor    # Les valeurs associées proviennent de la colonne Valor
+  )
+
+
+pib_data_temp <- full_join(pib_data_wider, pib_data_wider2, by = c("Fecha", "Part3", "T3_Unidad")) %>%  
+  select(-c(COD.y, T3_Unidad))
+
+pib_data2 <- full_join(pib_data_temp, pib_data_wider3, by = c("Fecha", "Part3"))%>%
+select(-c(COD.x, T3_Unidad))%>%
+  rename(Valor =`Dato base`)%>%
+  group_by(Part3)%>%
+  arrange(Fecha)%>%
+  mutate(
+  Mean2015 = mean(Valor[lubridate::year(Fecha) == 2015], na.rm = TRUE),
+Index2015 = Valor / Mean2015 * 100,
+Index2019 = Valor/ Valor[Fecha=="2019-12-31"]*100)
+ 
+
 
 
