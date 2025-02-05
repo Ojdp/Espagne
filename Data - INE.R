@@ -154,29 +154,82 @@ Index2019 = Valor/ Valor[Fecha=="2019-12-31"]*100)
 
 #PIB côté demande, prix courant
 
-pib_dataD_Val <- get_data_table(
-  idTable = "67823",            # Table ID for PIB
-  filter = NULL,                # No additional filters
-  nlast = NULL,                 # Retrieve all available periods
-  det = 0,                      # Detail level: 0 for basic information
-  tip = "A",                    # Readable output format
-  lang = "ES",                  # Language: Spanish
-  validate = TRUE,              # Validate parameters
-  verbose = TRUE,               # Display the generated URL
-  unnest = TRUE                 # Return data as a single dataframe
-)%>%
-  separate(
-    col = Nombre,               # La colonne à séparer
-    into = c("Part1", "Part2", "Part3", "Part4", "Part5"),  # Noms des nouvelles colonnes
-    sep = "\\. ",               # Séparateur : point suivi d'un espace
-    fill = "right",             # Remplit les colonnes manquantes avec NA si besoin
-    extra = "merge"             # Conserve les parties non divisées dans la dernière colonne
-  )%>%
-  filter(str_detect(Nombre,"Datos ajustados de estacionalidad y calendario")) 
+get_pib_data <- function(idTable, unit_filter, keyword, rename_col) {
+  get_data_table(
+    idTable = idTable,  
+    filter = NULL,   
+    nlast = NULL,    
+    det = 0,         
+    tip = "A",       
+    lang = "ES",     
+    validate = TRUE, 
+    verbose = TRUE,  
+    unnest = TRUE    
+  ) %>%
+    filter(T3_Unidad == unit_filter) %>%
+    filter(str_detect(Nombre, "Datos ajustados de estacionalidad y calendario")) %>%
+    filter(str_detect(Nombre, keyword)) %>%
+    separate(Nombre, into = paste0("Part", 1:8), sep = "\\. ", fill = "right", extra = "merge") %>%
+    mutate(Part4 = ifelse(Part4 %in% c("Variación trimestral", "Variación anual", "Dato base", "Aportación anual", "Aportación trimestral"), "", Part4)) %>% 
+    mutate(Part5 = ifelse(Part5 %in% c("Variación trimestral", "Variación anual", "Dato base", "Aportación anual", "Aportación trimestral"), "", Part5)) %>%
+    mutate(Part6 = ifelse(Part6 %in% c("Variación trimestral", "Variación anual", "Dato base", "Aportación anual", "Aportación trimestral"), "", Part6)) %>%# Remplacement par ""
+    mutate(Fecha = as.Date(sub("T.*", "", Fecha))) %>%
+    rename(!!rename_col := Valor) %>%
+    select(Fecha, Part3, Part4, Part5, Part6, !!rename_col)
+}
 
-#jai pas run tout ca
-pib_dataD_Vol1 <- get_data_table(
-  idTable = "67824",  
+
+
+#PIB côté demande
+pib_dato_base <- get_pib_data("67823", "Euros", "Datos ajustados de estacionalidad y calendario", "Dato_base")
+pib_var_trimestral <- get_pib_data("67823", "Tasas", "Variación trimestral", "Variación_trimestral")
+pib_var_anual <- get_pib_data("67823", "Tasas", "Variación anual", "Variación_anual")
+
+pib_D_val <- merge(pib_dato_base, pib_var_trimestral, by = c("Fecha", "Part3", "Part4", "Part5", "Part6"), all = TRUE) %>%
+  merge(pib_var_anual, by = c("Fecha", "Part3", "Part4", "Part5", "Part6"), all = TRUE)
+
+pib_dato_base_vol <- get_pib_data("67824", "Índice", "Datos ajustados de estacionalidad y calendario", "Dato_base")
+pib_var_trimestral_vol <- get_pib_data("67824", "Tasas", "Variación trimestral", "Variación_trimestral")
+pib_var_anual_vol <- get_pib_data("67824", "Tasas", "Variación anual", "Variación_anual")
+pib_aport_anual_vol <- get_pib_data("67824", "Puntos porcentuales", "Aportación anual", "Aportación_anual")
+pib_aport_trimestral_vol <- get_pib_data("67824", "Puntos porcentuales", "Aportación trimestral", "Aportación_trimestral")
+
+pib_D_vol <- pib_dato_base_vol %>%
+  merge(pib_var_trimestral_vol, by = c("Fecha", "Part3", "Part4", "Part5", "Part6"), all = TRUE) %>%
+  merge(pib_var_anual_vol, by = c("Fecha", "Part3", "Part4", "Part5","Part6"), all = TRUE) %>%
+  merge(pib_aport_anual_vol, by = c("Fecha", "Part3", "Part4", "Part5", "Part6"), all = TRUE) %>%
+  merge(pib_aport_trimestral_vol, by = c("Fecha", "Part3", "Part4", "Part5", "Part6"), all = TRUE)
+
+
+#PIB côté offre
+
+pib_dato_base2 <- get_pib_data("67821", "Euros", "Datos ajustados de estacionalidad y calendario", "Dato_base")
+pib_var_trimestral2 <- get_pib_data("67821", "Tasas", "Variación trimestral", "Variación_trimestral")
+pib_var_anual2 <- get_pib_data("67821", "Tasas", "Variación anual", "Variación_anual")
+
+pib_O_val <- merge(pib_dato_base2, pib_var_trimestral2, by = c("Fecha", "Part3", "Part4", "Part5", "Part6"), all = TRUE) %>%
+  merge(pib_var_anual2, by = c("Fecha", "Part3", "Part4", "Part5", "Part6"), all = TRUE)%>%
+select(-c(Part5,Part6))
+
+
+pib_dato_base_vol2 <- get_pib_data("67822", "Índice", "Datos ajustados de estacionalidad y calendario", "Dato_base")
+pib_var_trimestral_vol2 <- get_pib_data("67822", "Tasas", "Variación trimestral", "Variación_trimestral")
+pib_var_anual_vol2 <- get_pib_data("67822", "Tasas", "Variación anual", "Variación_anual")
+pib_aport_anual_vol2 <- get_pib_data("67822", "Puntos porcentuales", "Aportación anual", "Aportación_anual")
+pib_aport_trimestral_vol2 <- get_pib_data("67822", "Puntos porcentuales", "Aportación trimestral", "Aportación_trimestral")
+
+pib_O_vol <- pib_dato_base_vol2 %>%
+  merge(pib_var_trimestral_vol2, by = c("Fecha", "Part3", "Part4", "Part5", "Part6"), all = TRUE) %>%
+  merge(pib_var_anual_vol2, by = c("Fecha", "Part3", "Part4", "Part5","Part6"), all = TRUE) %>%
+  merge(pib_aport_anual_vol2, by = c("Fecha", "Part3", "Part4", "Part5", "Part6"), all = TRUE) %>%
+  merge(pib_aport_trimestral_vol2, by = c("Fecha", "Part3", "Part4", "Part5", "Part6"), all = TRUE)%>%
+  select(-c(Part5,Part6))
+
+
+#Emploi
+
+data_Emploi <- get_data_table(
+  idTable = "67827",  
   filter = NULL,   
   nlast = NULL,    
   det = 0,         
@@ -186,187 +239,12 @@ pib_dataD_Vol1 <- get_data_table(
   verbose = TRUE,  
   unnest = TRUE    
 ) %>%
-  filter(T3_Unidad== "Índice")%>%
   filter(str_detect(Nombre,"Datos ajustados de estacionalidad y calendario")) %>%
-  separate(Nombre, into = paste0("Part", 1:9), sep = "\\. ", fill = "right", extra = "merge") %>%
-  mutate(
-    # Trouver la position actuelle de "Dato base" et "Índices de volumen encadenado"
-    pos_dato_base = apply(., 1, function(row) which(row == "Dato base")[1]),
-    pos_indices = apply(., 1, function(row) which(row == "Índices de volumen encadenados")[1]),
-    
-    # Déplacer "Dato base" à la colonne 8 et "Índices de volumen encadenado" à la colonne 9
-    Part8 = ifelse(!is.na(pos_dato_base), "Dato base", NA),
-    Part9 = ifelse(!is.na(pos_indices), "Índices de volumen encadenados", NA)
-  ) %>%
-  mutate(across(everything(), ~ ifelse(. %in% c("Dato base", "Índices de volumen encadenados"), NA, .)))%>%
-  mutate(Part8 = "Dato base",
-         Part9 = "Índices de volumen encadenados")%>%
-  rename( "Dato_base" = Valor)%>%
+  separate(Nombre, into = paste0("Part", 1:6), sep = "\\. ", fill = "right", extra = "merge") %>%
   mutate(Fecha = as.Date(sub("T.*", "", Fecha)))%>%
-  select(-c(Part8,Part7, Part1, Part2, T3_Escala,T3_TipoDato,T3_Periodo, Anyo,T3_Unidad, pos_dato_base, pos_indices))
-
-head(pib_dataD_Vol1$Fecha)
-
-pib_dataD_Vol2 <- get_data_table(
-  idTable = "67824",  
-  filter = NULL,   
-  nlast = NULL,    
-  det = 0,         
-  tip = "A",       
-  lang = "ES",     
-  validate = TRUE, 
-  verbose = TRUE,  
-  unnest = TRUE    
-) %>%
-  filter(T3_Unidad== "Tasas")%>%
-  filter(str_detect(Nombre,"Variación trimestral")) %>%
-  filter(str_detect(Nombre,"Datos ajustados de estacionalidad y calendario")) %>%
-  separate(Nombre, into = paste0("Part", 1:9), sep = "\\. ", fill = "right", extra = "merge") %>%
-  mutate(
-    pos_dato_base = apply(., 1, function(row) which(row == "Variación trimestral")[1]),
-    pos_indices = apply(., 1, function(row) which(row == "Índices de volumen encadenados")[1]),
-    Part8 = ifelse(!is.na(pos_dato_base), "Variación trimestral", NA),
-    Part9 = ifelse(!is.na(pos_indices), "Índices de volumen encadenados", NA)
-  ) %>%
-  mutate(across(everything(), ~ ifelse(. %in% c("Variación trimestral", "Índices de volumen encadenados"), NA, .)))%>%
-  mutate(Part8 = "Variación trimestral",
-         Part9 = "Índices de volumen encadenados")%>%
-  rename( "Variación_trimestral" = Valor)%>%
-  mutate(Fecha = as.Date(sub("T.*", "", Fecha)))%>%
-  select(-c(Part8,Part7, Part1, Part2, T3_Escala,T3_TipoDato,T3_Periodo, Anyo,T3_Unidad, pos_dato_base, pos_indices))
-
-pib_dataD_Vol3 <- get_data_table(
-  idTable = "67824",  
-  filter = NULL,   
-  nlast = NULL,    
-  det = 0,         
-  tip = "A",       
-  lang = "ES",     
-  validate = TRUE, 
-  verbose = TRUE,  
-  unnest = TRUE    
-) %>%
-  filter(T3_Unidad== "Tasas")%>%
-  filter(str_detect(Nombre,"Variación anual")) %>%
-  filter(str_detect(Nombre,"Datos ajustados de estacionalidad y calendario")) %>%
-  separate(Nombre, into = paste0("Part", 1:9), sep = "\\. ", fill = "right", extra = "merge") %>%
-  mutate(
-    pos_dato_base = apply(., 1, function(row) which(row == "Variación anual")[1]),
-    pos_indices = apply(., 1, function(row) which(row == "Índices de volumen encadenados")[1]),
-    Part8 = ifelse(!is.na(pos_dato_base), "Variación anual", NA),
-    Part9 = ifelse(!is.na(pos_indices), "Índices de volumen encadenados", NA)
-  ) %>%
-  mutate(across(everything(), ~ ifelse(. %in% c("Variación anual", "Índices de volumen encadenados"), NA, .)))%>%
-  mutate(Part8 = "Variación anual",
-         Part9 = "Índices de volumen encadenados")%>%
-  mutate(Fecha = as.Date(sub("T.*", "", Fecha)))%>%
-  rename( "Variación_anual" = Valor)%>%
-  select(-c(Part8,Part7, Part1, Part2, T3_Escala,T3_TipoDato,T3_Periodo, Anyo,T3_Unidad, pos_dato_base, pos_indices))
-
-pib_dataD_Vol4 <- get_data_table(
-  idTable = "67824",  
-  filter = NULL,   
-  nlast = NULL,    
-  det = 0,         
-  tip = "A",       
-  lang = "ES",     
-  validate = TRUE, 
-  verbose = TRUE,  
-  unnest = TRUE    
-) %>%
-  filter(T3_Unidad== "Puntos porcentuales")%>%
-  filter(str_detect(Nombre,"Aportación anual")) %>%
-  filter(str_detect(Nombre,"Datos ajustados de estacionalidad y calendario")) %>%
-  separate(Nombre, into = paste0("Part", 1:9), sep = "\\. ", fill = "right", extra = "merge") %>%
-  mutate(
-    pos_dato_base = apply(., 1, function(row) which(row == "Aportación anual")[1]),
-    pos_indices = apply(., 1, function(row) which(row == "Índices de volumen encadenados")[1]),
-    Part8 = ifelse(!is.na(pos_dato_base), "Aportación anual", NA),
-    Part9 = ifelse(!is.na(pos_indices), "Índices de volumen encadenados", NA)
-  ) %>%
-  mutate(across(everything(), ~ ifelse(. %in% c("Aportación anual", "Índices de volumen encadenados"), NA, .)))%>%
-  mutate(Part8 = "Aportación anual",
-         Part9 = "Índices de volumen encadenados")%>%
-  mutate(Fecha = as.Date(sub("T.*", "", Fecha)))%>%
-  rename( "Aportación_anual" = Valor)%>%
-  select(-c(Part8,Part7, Part1, Part2, T3_Escala,T3_TipoDato,T3_Periodo, Anyo,T3_Unidad, pos_dato_base, pos_indices))
-
-pib_dataD_Vol5 <- get_data_table(
-  idTable = "67824",  
-  filter = NULL,   
-  nlast = NULL,    
-  det = 0,         
-  tip = "A",       
-  lang = "ES",     
-  validate = TRUE, 
-  verbose = TRUE,  
-  unnest = TRUE    
-) %>%
-  filter(T3_Unidad== "Puntos porcentuales")%>%
-  filter(str_detect(Nombre,"Aportación trimestral"))%>%
-  filter(str_detect(Nombre,"Datos ajustados de estacionalidad y calendario")) %>%
-  separate(Nombre, into = paste0("Part", 1:9), sep = "\\. ", fill = "right", extra = "merge") %>%
-  mutate(
-    pos_dato_base = apply(., 1, function(row) which(row == "Aportación trimestral")[1]),
-    pos_indices = apply(., 1, function(row) which(row == "Índices de volumen encadenados")[1]),
-    Part8 = ifelse(!is.na(pos_dato_base), "Aportación trimestral", NA),
-    Part9 = ifelse(!is.na(pos_indices), "Índices de volumen encadenados", NA)
-  ) %>%
-  mutate(across(everything(), ~ ifelse(. %in% c("Aportación trimestral", "Índices de volumen encadenados"), NA, .)))%>%
-  mutate(Part8 = "Aportación trimestral",
-         Part9 = "Índices de volumen encadenados")%>%
-  mutate(Fecha = as.Date(sub("T.*", "", Fecha)))%>%
-  rename( "Aportación_trimestral" = Valor)%>%
-  select(-c(Part8,Part7, Part1, Part2, T3_Escala,T3_TipoDato,T3_Periodo, Anyo,T3_Unidad, pos_dato_base, pos_indices))
-
-merged_data <- merge(pib_dataD_Vol1, pib_dataD_Vol2, by = c("Part3","Part4","Part5", "Part6","Fecha", "Part9"))%>%
-  select(-c(COD.x, COD.y))
-merged_data2 <- merge(merged_data, pib_dataD_Vol3, by = c("Part3","Part4","Part5", "Part6","Fecha", "Part9"))%>%
-  select(-c(COD))
-merged_data3 <- merge(merged_data2, pib_dataD_Vol4, by = c("Part3","Part4","Part5", "Part6","Fecha", "Part9"))%>%
-  select(-c(COD))
-pib_dataD_Vol <- merge(merged_data3, pib_dataD_Vol5, by = c("Part3","Part4","Part5", "Part6","Fecha", "Part9"))%>%
-  select(-c(COD)) 
-
-ggplot(aes(x = as.Date(Fecha), y = Aportación_trimestral), data = pib_dataD_Vol) +
-  geom_bar(data = pib_dataD_Vol %>% 
-             filter(Part3 %in% c("Demanda nacional", "Formación bruta de capital fijo (FBCF)", "Exportaciones de bienes y servicios", "Importaciones de bienes y servicios" ,"Variación de existencias y adquisiciones menos cesiones de objetos valiosos" )),
-           aes(fill = Part3), 
-           position = "stack", stat = "identity", alpha = .8) +  
-  geom_line(data = filter(pib_dataD_Vol, Part3 == "Producto interior bruto a precios de mercado"),
-            color = "black", size = 0.8) + 
-  labs(
-    caption = "Source: INE",
-    title = "",
-    x = "",
-    y = "Contribution en pourcentage à la croissance totale"
-  ) +
-  theme_ofce(panel.background = element_blank(), text = element_text(family = "Arial", size= 8.5)) +
-  theme(legend.position = "bottom") +  
-  scale_y_continuous(limits = c(-5, 12), labels = scales::label_number(decimal.mark = ",")) +
-  scale_x_date(limits = as.Date(c("2010-04-01", max(pib_dataD_Vol$date))), expand = c(0, 0)) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
-  scale_fill_brewer(palette = "Set1") +
-  guides(fill = guide_legend(title = NULL))
+  select(-c(Part2, Part4,T3_TipoDato, T3_Periodo, T3_Escala,Anyo))
 
 
-ggplot(aes(x = as.Date(Fecha), y = Aportación_anual), data = pib_dataD_Vol) +
-  geom_bar(data = pib_dataD_Vol %>% 
-             filter(Part3 %in% c("Demanda nacional", "Formación bruta de capital fijo (FBCF)", "Exportaciones de bienes y servicios", "Importaciones de bienes y servicios" ,"Variación de existencias y adquisiciones menos cesiones de objetos valiosos" )),
-           aes(fill = Part3), 
-           position = "stack", stat = "identity", alpha = .8) +  
-  geom_line(data = filter(pib_dataD_Vol, Part3 == "Producto interior bruto a precios de mercado"),
-            color = "black", size = 0.8) + 
-  labs(
-    caption = "Source: INE",
-    title = "",
-    x = "",
-    y = "Contribution en pourcentage à la croissance totale"
-  ) +
-  theme_ofce(panel.background = element_blank(), text = element_text(family = "Arial", size= 8.5)) +
-  theme(legend.position = "bottom") +  
-  scale_y_continuous(limits = c(-5, 12), labels = scales::label_number(decimal.mark = ",")) +
-  scale_x_date(limits = as.Date(c("2010-04-01", max(pib_dataD_Vol$date))), expand = c(0, 0)) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
-  scale_fill_brewer(palette = "Set1") +
-  guides(fill = guide_legend(title = NULL))
+
+  
+
