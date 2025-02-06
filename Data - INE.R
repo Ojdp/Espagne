@@ -69,13 +69,6 @@ ipc_data_table <- get_data_table(
 )
 
 
-# Afficher la réponse brute
-print(ipc_data2)
-
-
-
-
-
 # Fetch data from the table for PIB, Current prices
 pib_dataS <- get_data_table(
   idTable = "67821",            # Table ID for PIB
@@ -242,8 +235,7 @@ data_Emploi <- get_data_table(
   filter(str_detect(Nombre,"Datos ajustados de estacionalidad y calendario")) %>%
   separate(Nombre, into = paste0("Part", 1:6), sep = "\\. ", fill = "right", extra = "merge") %>%
   mutate(Fecha = as.Date(sub("T.*", "", Fecha)))%>%
-  select(-c(Part2, Part4,T3_TipoDato, T3_Periodo, T3_Escala,Anyo))
-
+  select(-c(Part2, Part4,T3_TipoDato, T3_Periodo, T3_Escala,Anyo, T3_Unidad))
 
 
   
