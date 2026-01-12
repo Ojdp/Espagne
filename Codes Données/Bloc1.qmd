@@ -1,0 +1,269 @@
+---
+title: "Bloc 1"
+subtitle: "Emploi, FBCF, Consommation"
+date: "09-04-2025"
+author:
+  - name: Ombeline Jullien de Pommerol
+    email: ombeline.julliendepommerol@sciencespo.fr
+    affiliation: OFCE, Sciences Po Paris
+    affiliation-url: http://www.ofce.fr
+format:
+   pres-revealjs:
+      embed-resources: true
+---
+
+```{r setup, include=FALSE}
+# Définir un miroir CRAN fixe
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+
+# Fonction pour installer et charger un package si nécessaire
+install_and_load <- function(pkg){
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    install.packages(pkg)
+  }
+  library(pkg, character.only = TRUE)
+}
+
+# Packages nécessaires
+packages <- c("dplyr", "ggplot2", "tidyr", "lubridate")
+
+# Installer et charger
+lapply(packages, install_and_load)
+```
+
+
+```{r}
+
+load("pib_workspace.RData")
+load("all_dataframes.RData")
+
+```
+
+# Intro : Retour le PIB 
+
+## PIB
+
+```{r}
+library(glue)
+
+dernier_index <- tail(pib_total$Index2019, 1)
+
+phrase_graphique <- glue(
+  "Au dernier trimestre, le PIB espagnol est désormais {round(dernier_index - 100, 1)} points au-dessus de son niveau de fin 2019."
+)
+
+phrase_graphique 
+
+pib_total <- pib_D_vol %>%
+  filter(Part3 == "Producto interior bruto a precios de mercado") %>%
+  arrange(Fecha)
+
+ggplot(pib_total, aes(x = Fecha)) +
+  geom_line(aes(y = Index2019, color = "Index 2019"), size = 1) +
+  labs(
+    x = "",
+    y = "Indice (base 100)",
+    color = "Indice"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+```
+
+## PIB par composante
+
+```{r}
+
+dernieres_lignes <- pib_total %>% slice_tail(n = 2)
+phrase_pib <- glue(
+  "Le PIB a augmenté de {round(dernieres_lignes$Variación_trimestral[2], 1)}% en variation trimestrielle ",
+  "au T{quarter(dernieres_lignes$Fecha[2])} {year(dernieres_lignes$Fecha[2])}, ",
+  "après {round(dernieres_lignes$Variación_trimestral[1], 1)}% au T{quarter(dernieres_lignes$Fecha[1])} {year(dernieres_lignes$Fecha[1])}. ",
+  "En variation annuelle, le PIB a augmenté de {round(dernieres_lignes$Variación_anual[2], 1)}%."
+)
+
+
+phrase_pib 
+
+phrase <- glue(
+  "Sur les deux derniers trimestres, la croissance du PIB a été tirée par respectivement ",
+  "{derniers$Part3_fr[1]} (+{round(derniers$Aportación_trimestral[1],1)} pp) ",
+  "au {derniers$trim[1]}, et ",
+  "{derniers$Part3_fr[2]} (+{round(derniers$Aportación_trimestral[2],1)} pp) ",
+  "au {derniers$trim[2]}."
+)
+
+phrase
+
+```
+
+```{r, echo=FALSE,message=FALSE, warning=FALSE, out.width="80%"}
+library(ofce)
+
+
+ggplot(aes(x = as.Date(Fecha), y = Aportación_anual), data = pib_D_vol) +
+  geom_bar(data = pib_D_vol %>% 
+             filter(Part3 %in% c(
+               "Gasto en consumo final", 
+               "Formación bruta de capital fijo (FBCF)", 
+               "Exportaciones de bienes y servicios", 
+               "Importaciones de bienes y servicios"
+             )),
+           aes(fill = Part3), 
+           position = "stack", stat = "identity", alpha = .8) +  
+  geom_line(data = filter(pib_D_vol, Part3 == "Producto interior bruto a precios de mercado"),
+            color = "black", size = 0.8) + 
+  labs(
+    caption = "Source: INE",
+    title = "",
+    x = "",
+    y = "Contribution en pourcentage à la croissance totale"
+  ) +
+  theme_ofce(panel.background = element_blank(), text = element_text(family = "Arial", size = 8.5)) +
+  theme(legend.position = "bottom") +  
+  scale_y_continuous(limits = c(-5, 12), labels = scales::label_number(decimal.mark = ",")) +
+  scale_x_date(limits = as.Date(c("2010-04-01", max(pib_D_vol$Fecha))), expand = c(0, 0)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  scale_fill_brewer(palette = "Set1") +
+  guides(fill = guide_legend(title = NULL))
+```
+
+
+## Tableau 1 : Variation trim
+```{r}
+
+knitr::include_graphics("tab_final.png")
+```
+
+
+# Partie 1 : Emploi
+
+## Emploi total (Nombre de personnes)
+
+Croissance annuelle %
+Hausse de 3% de l'emploi total au deuxième trimestre 2025, après une hausse solide de 2,5% au premier trimestre. 
+
+```{r, echo=FALSE,message=FALSE, warning=FALSE, out.width="80%"}
+
+ggplot(
+  data_Emploi %>%
+    filter(
+      Part1 == "Ocupados",
+      Part6 == "Variación anual.",
+      Part3 == "Personas",
+      Part5 == "Total CNAE"
+    ),
+  aes(x = Fecha, y = Valor)
+) +
+  geom_line(color = "#ff7f0e", size = 1.2) +
+  labs(
+    title = "",
+    x = "",
+    y = ""
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(plot.title = element_text(face = "bold"))
+```
+
+## Emploi par secteurs
+(Indice base T4 2019 = 100)
+```{r, echo=FALSE,message=FALSE, warning=FALSE, out.width="80%"}
+
+data_Emploi_Indice <- data_Emploi %>%
+  filter(
+    Part1 == "Ocupados",
+    Part6 == "Dato base.",
+    Part3 == "Personas",
+    Part5 %in% secteurs
+  ) %>%
+  group_by(Part5) %>%
+  mutate(base_2019Q4 = Valor[Fecha == as.Date("2019-10-01")]) %>%
+  mutate(Indice = (Valor / base_2019Q4) * 100) %>%
+  ungroup()
+
+ggplot(
+  data_Emploi_Indice,
+  aes(x = Fecha, y = Indice, color = Part5)
+) +
+  geom_line(size = 1.2) +
+  labs(
+    title = "",
+    x = "",
+    y = "",
+    color = ""
+  ) +
+  theme_minimal(base_size = 10) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    legend.position = "bottom",
+    legend.box = "horizontal" # Étale la légende
+  ) +
+  guides(color = guide_legend(nrow = 2))
+```
+
+## Nombre d'heures travaillées par secteur
+(Indice base T4 2019 = 100)
+
+```{r, echo=FALSE,message=FALSE, warning=FALSE, out.width="80%"}
+
+data_Emploi_IndiceH <- data_Emploi %>%
+  filter(
+    Part1 == "Ocupados",
+    Part6 == "Dato base.",
+    Part3 == "Horas trabajadas",
+    Part5 %in% secteurs
+  ) %>%
+  group_by(Part5) %>%
+  mutate(base_2019Q4 = Valor[Fecha == as.Date("2019-10-01")]) %>%
+  mutate(Indice = (Valor / base_2019Q4) * 100) %>%
+  ungroup()
+
+ggplot(
+  data_Emploi_IndiceH,
+  aes(x = Fecha, y = Indice, color = Part5)
+) +
+  geom_line(size = 1.2) +
+  labs(
+    title = "",
+    x = "",
+    y = "",
+    color = ""
+  ) +
+  theme_minimal(base_size = 10) +
+  theme(plot.title = element_text(face = "bold"))
+
+```
+
+
+# Partie 2 : Investissement 
+
+## Par agent 
+
+```{r, echo=FALSE,message=FALSE, warning=FALSE, out.width="80%"}
+
+knitr::include_graphics("figures/investissement_par_agent.png")
+
+
+```
+
+## Par branche 
+
+```{r}
+knitr::include_graphics("invest_tab.png")
+```
+
+## Petit point tourisme
+```{r}
+knitr::include_graphics("tourisme.png")
+```
+## Epargne
+```{r}
+knitr::include_graphics("epargne.png")
+```
+## Micro cadrage
+```{r}
+knitr::include_graphics("cadrage.png")
+```

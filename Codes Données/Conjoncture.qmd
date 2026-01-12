@@ -1,0 +1,270 @@
+---
+title: "¿Cómo va España?"
+subtitle: "Conjoncture"
+date: "08-27-2025"
+author:
+  - name: Ombeline Jullien de Pommerol
+    email: ombeline.julliendepommerol@sciencespo.fr
+    affiliation: OFCE, Sciences Po Paris
+    affiliation-url: http://www.ofce.fr
+format:
+   pres-revealjs:
+      embed-resources: true
+---
+
+```{r, echo=FALSE,message=FALSE, warning=FALSE, out.width="80%"}
+library(ggiraph)
+library(ggplot2)
+library(dplyr)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='hide'}
+source("Data - Eurostat.R")
+load("data_for_plots.RData") 
+```
+
+
+# Partie 1: Les freins à la production 
+
+## Selon les secteurs
+
+```{r, echo=FALSE,message=FALSE, warning=FALSE, out.width="80%"}
+graph_bcs_freins <- bcs_indics |> 
+  filter(obsTime > "2018-12-01") |> 
+  ggplot(aes(x = obsTime, y = obsValue, colour = indic)) +
+  facet_wrap(~sector) +
+  geom_line() +
+  geom_point(size = 1) +
+  theme_ofce(base_family = "sans") +
+  ylab("") +
+  xlab("") +
+  labs(colour = "Type de frein") +
+  scale_colour_manual(
+    values = c("Pas de frein" = "forestgreen",
+               "Demande" = "steelblue",
+               "Main-d'oeuvre" = "firebrick")
+  )
+
+graph_bcs_freins
+
+```
+
+# Partie 2: Les indicateurs de confiance 
+
+## Par secteur
+
+```{r, echo=FALSE,message=FALSE, warning=FALSE, out.width="80%"}
+ggplot(bcs_all, aes(x = obsTime, y = obsValue, colour = sector)) +
+  geom_line() +
+  theme_ofce() +
+  labs(
+    x = "",
+    y = "Valeur",
+    colour = "Secteur"
+  )
+```
+
+## Les consommateurs
+
+```{r, echo=FALSE,message=FALSE, warning=FALSE, out.width="80%"}
+
+ggplot(bcs_consummer, aes(x = obsTime, y = obsValue, colour = geo)) +
+  geom_line() +
+  geom_point(size = 0.5) +
+  theme_ofce() +
+  labs(
+    x = "Date",
+    y = "Valeur"
+  )
+
+```
+
+## L'économie globale 
+
+```{r, echo=FALSE,message=FALSE, warning=FALSE, out.width="80%"}
+ggplot(bcs_climate, aes(x = obsTime, y = obsValue, colour = geo)) +
+  geom_line() +
+  geom_point(size = 0.5) +
+  theme_ofce() +
+  labs(
+    x = "Date",
+    y = "Valeur"
+  )
+```
+
+# Partie 3 : Conjoncture de l'industrie 
+
+## Indice de Production Industrielle (Désaisonnalisé - INE)
+
+```{r, echo=FALSE,message=FALSE, warning=FALSE, out.width="80%"}
+ggplot(
+  ipi_index2 %>% filter(Date >= as.Date("2006-01-01")),
+  aes(x = Date, y = obsValue_sa)
+) +
+  geom_line(color = "firebrick") +
+  theme_minimal(base_family = "sans") +
+  labs(
+    x = "",
+    y = "Indice"
+  )
+
+
+```
+
+
+## Taux d’utilisation des capacités productives 
+```{r, echo=FALSE,message=FALSE, warning=FALSE, out.width="80%"}
+indus_quartely %>%
+  filter(indic == "Current level of capacity utilization (%)") %>%
+  ggplot(aes(x = obsTime, y = obsValue)) +
+  geom_line(color = "firebrick", size = 1) +
+  geom_point(color = "firebrick", size = 1) +
+  theme_minimal(base_family = "sans") +
+  labs(
+    x = "", y = "%"
+  )
+
+```
+
+## Nouvelles commandes
+
+```{r, echo=FALSE,message=FALSE, warning=FALSE, out.width="80%"}
+indus_quartely %>%
+  filter(indic == "New orders in recent months") %>%
+  ggplot(aes(x = obsTime, y = obsValue)) +
+  geom_line(color = "forestgreen", size = 1) +
+  geom_point(color = "forestgreen", size = 1) +
+  theme_minimal(base_family = "sans") +
+  labs(
+    x = "", y = ""
+  )
+
+```
+
+## Capacité de production actuelle
+
+```{r}
+indus_quartely %>%
+  filter(indic == "Assessment of current production capacity") %>%
+  ggplot(aes(x = obsTime, y = obsValue)) +
+  geom_line(color = "steelblue", size = 1) +
+  geom_point(color = "steelblue", size = 1) +
+  theme_minimal(base_family = "sans") +
+  labs(
+    x = "", y = ""
+  )
+
+```
+
+# Partie 4 : Conjoncture dans la construction 
+
+## Emploi attendu à 3 mois 
+
+```{r}
+cons_quartely %>%
+  filter(indic == "Employment expectations over the next 3 months") %>%
+  ggplot(aes(x = obsTime, y = obsValue)) +
+  geom_line(color = "firebrick", size = 1) +
+  geom_point(color = "firebrick", size = 1) +
+  theme_minimal(base_family = "sans") +
+  labs(
+    x = "", y = ""
+  )
+```
+
+## Activité passée sur 3 mois
+
+```{r}
+cons_quartely %>%
+  filter(indic == "Building activity development over the past 3 months") %>%
+  ggplot(aes(x = obsTime, y = obsValue)) +
+  geom_line(color = "steelblue", size = 1) +
+  geom_point(color = "steelblue", size = 1) +
+  theme_minimal(base_family = "sans") +
+  labs(
+    x = "", y = ""
+  )
+```
+
+## Carnets de commandes
+
+```{r}
+cons_quartely %>%
+  filter(indic == "Evolution of the current overall order books") %>%
+  ggplot(aes(x = obsTime, y = obsValue)) +
+  geom_line(color = "forestgreen", size = 1) +
+  geom_point(color = "forestgreen", size = 1) +
+  theme_minimal(base_family = "sans") +
+  labs(
+    x = "", y = ""
+  )
+```
+
+## Prix attendus à 3 mois
+
+```{r}
+cons_quartely %>%
+  filter(indic == "Price expectations over the next 3 months") %>%
+  ggplot(aes(x = obsTime, y = obsValue)) +
+  geom_line(color = "darkorange", size = 1) +
+  geom_point(color = "darkorange", size = 1) +
+  theme_minimal(base_family = "sans") +
+  labs(
+    x = "", y = ""
+  )
+```
+
+# Partie 5 : Conjoncture dans les services
+
+## Indice de chiffre d'affaires Services 
+
+```{r}
+ggplot(
+  data = indice_sa %>%
+    filter(trimws(Secteur) == "Total servicios",
+           trimws(Variation) == "Índice",
+           Date >= as.Date("2010-01-01")) %>%  # si tu veux limiter depuis 2010
+    arrange(Date),
+  aes(x = Date, y = obsValue_sa)
+) +
+  geom_line(color = "steelblue", size = 1) +
+  theme_minimal(base_family = "sans") +
+  labs(
+    subtitle = "Total servicios (saisonnalité corrigée depuis 2010)",
+    x = "",
+    y = "Indice corrigé"
+  )
+
+```
+
+## Indice de CA par sous secteur
+
+```{r}
+secteurs_selection <- c(
+  "Comercio al por mayor y al por menor; reparación de vehículos de motor y motocicletas",
+  "Transporte y almacenamiento",
+  "Servicios de información",
+  "Venta y reparación de vehículos de motor y motocicletas",
+  "Información y comunicaciones",
+  "Hostelería"
+)
+
+ggplot(
+  data = indice_sa %>%
+    filter(trimws(Secteur) %in% secteurs_selection,
+           trimws(Variation) == "Índice",
+           Date >= as.Date("2010-01-01")) %>%  # <-- Filtre pour dates à partir de 2010
+    arrange(Date),
+  aes(x = Date, y = obsValue_sa)
+) +
+  geom_line(color = "steelblue", size = 1) +
+  theme_minimal(base_family = "sans") +
+  labs(
+    subtitle = "Saisonnalité corrigée par secteur depuis 2010",
+    x = "",
+    y = "Indice corrigé"
+  ) +
+  facet_wrap(~Secteur, scales = "free_y")
+```
+
+

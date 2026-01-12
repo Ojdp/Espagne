@@ -1,0 +1,28 @@
+---
+title: "Espagne"
+subtitle: "Compte_V0_Espagne"
+date: "02-11-2025"
+author:
+  - name: Ombeline Jullien de Pommerol
+    email: ombeline.julliendepommerol@sciencespo.fr
+    affiliation: OFCE, Sciences Po Paris
+    affiliation-url: http://www.ofce.fr
+format: 
+  html:
+    self-contained: true
+editor: visual
+---
+
+## Graphique 1: Contributions trim à la croissance
+
+```{r, echo=FALSE, out.width="80%"}
+knitr::include_graphics("graph1.png")
+
+```
+
+## Tableau 1: Compte V0
+
+```{r, echo=FALSE, out.width="80%"}
+knitr::include_graphics("tab_final.png")
+
+```

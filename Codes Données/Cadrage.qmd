@@ -1,0 +1,33 @@
+---
+title: "Cadrage Macro"
+date: "09-04-2025"
+author:
+  - name: Ombeline Jullien de Pommerol
+    email: ombeline.julliendepommerol@sciencespo.fr
+    affiliation: OFCE, Sciences Po Paris
+    affiliation-url: http://www.ofce.fr
+format:
+   pres-revealjs:
+      embed-resources: true
+---
+
+![](images/Bond10Y.PNG)
+
+```{r setup, include=FALSE}
+# Définir un miroir CRAN fixe
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+
+# Fonction pour installer et charger un package si nécessaire
+install_and_load <- function(pkg){
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    install.packages(pkg)
+  }
+  library(pkg, character.only = TRUE)
+}
+
+# Packages nécessaires
+packages <- c("dplyr", "ggplot2", "tidyr", "lubridate")
+
+# Installer et charger
+lapply(packages, install_and_load)
+```
