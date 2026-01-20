@@ -2,6 +2,10 @@
 
 install.packages("seasonal")
 install.packages("ineapir")
+install.packages("openxlsx")
+
+library(writexl)
+library(openxlsx)
 library(ineapir)
 library(httr)
 library(tidyr)
@@ -653,6 +657,39 @@ bienstransfere_data <- get_data_table(
   verbose = TRUE,        # Affiche l’URL construite
   unnest = TRUE          # Retourne un seul data.frame
 )
+
+
+
+#Population
+
+population <- get_data_table(
+  idTable = "56934",     # Table INE pour le PIB
+  filter = NULL,         # Aucun filtre appliqué ici
+  nlast = NULL,          # Toutes les périodes disponibles
+  det = 0,               # Détail minimal
+  tip = "A",             # Format lisible (A = amigable)
+  lang = "ES",           # Langue espagnole
+  validate = TRUE,       # Validation des paramètres
+  verbose = TRUE,        # Affiche l’URL construite
+  unnest = TRUE          # Retourne un seul data.frame
+)
+
+population <- population %>%
+  select(Anyo, Valor, Nombre, Fecha) %>%
+  mutate(Nombre = str_trim(Nombre)) %>%
+  separate(
+    Nombre,
+    into = c("Ambito", "Edad", "Sexo", "Indicador", "Unidad"),
+    sep = "\\.\\s*",
+    extra = "drop",
+    fill = "right"
+  ) %>%
+  mutate(
+    Fecha = as.Date(Fecha),
+    Trimestre = paste0("T", quarter(Fecha)),
+    Periode_trim = paste0(year(Fecha), "T", quarter(Fecha))
+  )%>%
+select(-Indicador, -Unidad, -Anyo, -Trimestre, -Periode_trim) 
 
 
 # Sauvegarder tous les dataframes dans un fichier .RData

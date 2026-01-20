@@ -62,53 +62,50 @@ correspondance <- tribble(
   # Tu peux compléter pour les colonnes prix courants (Euro)
 )
 
-# ------------------------------
-# 3. Transformer pib_O_vol en table large
-# ------------------------------
-pib_wide <- pib_O_vol %>%
-  select(Fecha, Part3, Part4, Dato_base) %>% 
-  mutate(variable = ifelse(Part4 != "", paste(Part3, Part4, sep = " - "), Part3)) %>%
-  select(-Part3, -Part4) %>%
-  pivot_wider(names_from = variable, values_from = Dato_base)
-
-# ------------------------------
-# 4. Renommer les colonnes espagnoles en colonnes anglaises
-# ------------------------------
-for (i in 1:nrow(correspondance)) {
-  old <- correspondance$col_df[i]
-  new <- correspondance$col_excel[i]
-  names(pib_wide)[names(pib_wide) == old] <- new
+make_wide <- function(df_long, suffix) {
+  
+  df_wide <- df_long %>%
+    select(Fecha, Part3, Part4, Dato_base) %>% 
+    mutate(variable = ifelse(
+      Part4 != "",
+      paste(Part3, Part4, sep = " - "),
+      Part3
+    )) %>%
+    select(-Part3, -Part4) %>%
+    pivot_wider(names_from = variable, values_from = Dato_base)
+  
+  # Renommage ES -> EN
+  for (i in 1:nrow(correspondance)) {
+    old <- correspondance$col_df[i]
+    new <- correspondance$col_excel[i]
+    names(df_wide)[names(df_wide) == old] <- new
+  }
+  
+  # Ajout suffixe (_volume / _value)
+  names(df_wide)[-1] <- paste0(names(df_wide)[-1], suffix)
+  
+  return(df_wide)
 }
 
-# ------------------------------
-# 5. Sauvegarder le fichier final
-# ------------------------------
-write.xlsx(pib_wide, "pib_rempli.xlsx")
+# ============================================================
+# 3. Construire les tables volume et valeur
+# ============================================================
+pib_vol_wide <- make_wide(pib_O_vol, "_volume")
+pib_val_wide <- make_wide(pib_O_val, "_value")
 
-cat("✅ Fichier 'pib_rempli.xlsx' créé avec succès !\n")
-
-
-
-# Charger les packages
-library(dplyr)
-library(writexl)  # Pour exporter en Excel
-
-library(dplyr)
-library(tidyr)
-library(writexl)
-
-# 1. Transformer pib_O_val en format wide
-pib_O_val_wide <- pib_O_val %>%
-  select(Fecha, Part3, Part4, Dato_base) %>% 
-  mutate(variable = ifelse(Part4 != "", 
-                           paste(Part3, Part4, sep = " - "), 
-                           Part3)) %>%
-  select(-Part3, -Part4) %>%
-  pivot_wider(names_from = variable, values_from = Dato_base)
+# ============================================================
+# 4. Fusion volume + valeur
+# ============================================================
+pib_vol_val_secteurs <- pib_vol_wide %>%
+  left_join(pib_val_wide, by = "Fecha")
 
 
-# 4. Exporter en Excel
-write_xlsx(pib_O_val_wide, "pib_O_val_ordre.xlsx")
+# ============================================================
+# Création fichier excel update Pierre et Mag
+# ============================================================
+output_path <- "C:/Users/153003/Documents/GitHub/Espagne/Codes Données/Sorties Excel/PIB_VA_Secteurs_volume_valeur.xlsx"
+
+write_xlsx(pib_vol_val_secteurs, output_path)
 
 
 emploi_filtre <- data_Emploi %>%
@@ -173,7 +170,7 @@ write_xlsx(pib_D_val_wide, "pib_D_val.xlsx")
 
 
 pib_D_vol_wide <- pib_D_vol %>%
-  select(Fecha, Part3, Part4, Part5, Part6, Dato_base) %>% 
+  select(Fecha, Part3, Part4, Part5, Part6, Indice) %>% 
   mutate(variable = paste(
     Part3,
     ifelse(Part4 != "", Part4, ""),
@@ -187,7 +184,7 @@ pib_D_vol_wide <- pib_D_vol %>%
   select(-Part3, -Part4, -Part5, -Part6) %>%
   pivot_wider(
     names_from = variable, 
-    values_from = Dato_base,
+    values_from = Indice,
     values_fn = \(x) x[1]  # prend juste la première valeur
   )
 
@@ -213,13 +210,6 @@ arrange(Fecha)
 write_xlsx(menage_wide2, "compte_menage2.xlsx")
 
 
-library(dplyr)
-
-library(dplyr)
-library(tidyr)
-library(lubridate)
-library(openxlsx)
-
 # --- 1. PIB valeurs ---
 pib_D_val_clean <- pib_D_val %>%
   mutate(Variable = recode(Part3,
@@ -237,20 +227,23 @@ pib_D_val_clean <- pib_D_val %>%
   pivot_wider(names_from = Variable, values_from = Dato_base)
 
 # --- 2. PIB volumes depuis pib_toutes ---
-pib_D_vol_clean <- pib_toutes %>%
-  mutate(Variable = recode(Variable,
+pib_D_vol_clean <- pib_D_vol %>%
+  mutate(Variable = recode(Part3,
                            "Producto interior bruto a precios de mercado" = "PIB Vol",
                            "Gasto en consumo final de los hogares" = "C pv Vol",
                            "Gasto en consumo final de las AAPP" = "C pb Vol",
-                           "FBCF" = "FBCF Vol",
+                           "Formación bruta de capital" = "FBCF Vol",
                            "Exportaciones de bienes y servicios" = "X Vol",
                            "Importaciones de bienes y servicios" = "M Vol",
-                           "Variación de existencias y adquisiciones menos cesiones de objetos valiosos" = "Variation de Stock Vol"
+                           "Variación de existencias y adquisiciones menos cesiones de objetos valiosos" =
+                             "Variation de Stock Vol"
   )) %>%
-  filter(Variable %in% c("PIB Vol", "C pv Vol", "C pb Vol", 
-                         "FBCF Vol", "X Vol", "M Vol", "Variation de Stock Vol")) %>%
-  select(Fecha, Variable, PIB_Vol) %>%
-  pivot_wider(names_from = Variable, values_from = PIB_Vol)
+  filter(Variable %in% c(
+    "PIB Vol", "C pv Vol", "C pb Vol",
+    "FBCF Vol", "X Vol", "M Vol", "Variation de Stock Vol"
+  )) %>%
+  select(Fecha, Variable, Indice) %>%
+  pivot_wider(names_from = Variable, values_from = Indice)
 
 
 # --- 3. Fusion valeurs + volumes ---
@@ -286,6 +279,16 @@ pib_final <- pib_final %>%
          `PIB Vol`, `C pv Vol`, `C pb Vol`, `FBCF Vol`, `X Vol`, `M Vol`,
          `Variation de Stock`, `Variation de Stock`,
          Unemployement, IPCH)
+
+
+population <- population%>%
+  filter (Ambito == "Total Nacional",
+          Edad == "Todas las edades",
+          Sexo == "Total")%>%
+  select(Valor, Fecha)
+
+pib_final <- pib_final %>%
+  left_join(population, by = "Fecha")
 
 # --- 7. Export Excel ---
 write.xlsx(pib_final, "pib_final_2.xlsx", overwrite = TRUE)
