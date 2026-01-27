@@ -285,7 +285,8 @@ population <- population%>%
   filter (Ambito == "Total Nacional",
           Edad == "Todas las edades",
           Sexo == "Total")%>%
-  select(Valor, Fecha)
+  select(Valor, Fecha)%>%
+  rename(population = Valor)
 
 pib_final <- pib_final %>%
   left_join(population, by = "Fecha")
