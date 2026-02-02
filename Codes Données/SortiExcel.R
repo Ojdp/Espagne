@@ -103,7 +103,7 @@ pib_vol_val_secteurs <- pib_vol_wide %>%
 # ============================================================
 # Création fichier excel update Pierre et Mag
 # ============================================================
-output_path <- "C:/Users/153003/Documents/GitHub/Espagne/Codes Données/Sorties Excel/PIB_VA_Secteurs_volume_valeur.xlsx"
+output_path <- "/GitHub/Espagne/Codes Données/Sorties Excel/PIB_VA_Secteurs_volume_valeur.xlsx"
 
 write_xlsx(pib_vol_val_secteurs, output_path)
 

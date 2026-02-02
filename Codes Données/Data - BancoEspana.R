@@ -44,8 +44,16 @@ solde_df <- read_excel(temp_file, sheet = 1) %>%
 macro_df <- solde_df %>%
   inner_join(deuda_df, by = "Fecha")
 
-write.csv(deuda_clean, "deuda_PDE_pct_PIB.csv", row.names = FALSE)
 
-head(deuda_clean)
+#compte des entreprises
+
+url <- "https://www.bde.es/webbe/es/estadisticas/compartido/datos/xlsx/be1502.xlsx"
+
+temp_file <- tempfile(fileext = ".xlsx")
+GET(url, write_disk(temp_file, overwrite = TRUE))
+
+entreprise <- read_excel(temp_file, sheet = 1)
+
+head(df)
 
 
