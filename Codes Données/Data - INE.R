@@ -122,6 +122,8 @@ separate(Nombre, into = c("Nivel", "Indicador", "Tipo"), sep = "\\. ", remove = 
   mutate(Fecha = as_date(ymd_hms(Fecha)))%>%
   select(-Nombre, -T3_Periodo,-Anyo, -T3_TipoDato, -Nivel, -T3_Escala, -T3_Unidad, -Notas, -COD)
 
+#pondération
+
 ponderation <- get_data_table(
   idTable = "50946",            # Table ID for PIB
   filter = NULL,                # No additional filters
@@ -177,40 +179,40 @@ ponderation <- get_data_table(
 # group_by(Part4)%>%
 # select(-c(T3_Escala, Part5, Part2))
 
-pib_data_wider <- pib_dataS %>%
-  filter(Part4 == "Variación trimestral") %>%  # Filtrer uniquement les lignes correspondantes
-  pivot_wider(
-    names_from = Part4,    # Transformer les valeurs de Part4 en noms de colonnes
-    values_from = Valor    # Les valeurs associées proviennent de la colonne Valor
-  )
-
-pib_data_wider2 <- pib_dataS %>%
-  filter(Part4 == "Variación anual") %>%  # Filtrer uniquement les lignes correspondantes
-  pivot_wider(
-    names_from = Part4,    # Transformer les valeurs de Part4 en noms de colonnes
-    values_from = Valor    # Les valeurs associées proviennent de la colonne Valor
-  )
-
-pib_data_wider3 <- pib_dataS %>%
-  filter(Part4 == "Dato base") %>%  # Filtrer uniquement les lignes correspondantes
-  pivot_wider(
-    names_from = Part4,    # Transformer les valeurs de Part4 en noms de colonnes
-    values_from = Valor    # Les valeurs associées proviennent de la colonne Valor
-  )
-
-
-pib_data_temp <- full_join(pib_data_wider, pib_data_wider2, by = c("Fecha", "Part3", "T3_Unidad")) %>%  
-  select(-c(COD.y, T3_Unidad))
-
-pib_dataS <- full_join(pib_data_temp, pib_data_wider3, by = c("Fecha", "Part3"))%>%
-select(-c(COD.x, T3_Unidad))%>%
-  rename(Valor =`Dato base`)%>%
-  group_by(Part3)%>%
-  arrange(Fecha)%>%
-  mutate(
-  Mean2015 = mean(Valor[lubridate::year(Fecha) == 2015], na.rm = TRUE),
-Index2015 = Valor / Mean2015 * 100,
-Index2019 = Valor/ Valor[Fecha=="2019-12-31"]*100)
+# pib_data_wider <- pib_dataS %>%
+#   filter(Part4 == "Variación trimestral") %>%  # Filtrer uniquement les lignes correspondantes
+#   pivot_wider(
+#     names_from = Part4,    # Transformer les valeurs de Part4 en noms de colonnes
+#     values_from = Valor    # Les valeurs associées proviennent de la colonne Valor
+#   )
+# 
+# pib_data_wider2 <- pib_dataS %>%
+#   filter(Part4 == "Variación anual") %>%  # Filtrer uniquement les lignes correspondantes
+#   pivot_wider(
+#     names_from = Part4,    # Transformer les valeurs de Part4 en noms de colonnes
+#     values_from = Valor    # Les valeurs associées proviennent de la colonne Valor
+#   )
+# 
+# pib_data_wider3 <- pib_dataS %>%
+#   filter(Part4 == "Dato base") %>%  # Filtrer uniquement les lignes correspondantes
+#   pivot_wider(
+#     names_from = Part4,    # Transformer les valeurs de Part4 en noms de colonnes
+#     values_from = Valor    # Les valeurs associées proviennent de la colonne Valor
+#   )
+# 
+# 
+# pib_data_temp <- full_join(pib_data_wider, pib_data_wider2, by = c("Fecha", "Part3", "T3_Unidad")) %>%  
+#   select(-c(COD.y, T3_Unidad))
+# 
+# pib_dataS <- full_join(pib_data_temp, pib_data_wider3, by = c("Fecha", "Part3"))%>%
+# select(-c(COD.x, T3_Unidad))%>%
+#   rename(Valor =`Dato base`)%>%
+#   group_by(Part3)%>%
+#   arrange(Fecha)%>%
+#   mutate(
+#   Mean2015 = mean(Valor[lubridate::year(Fecha) == 2015], na.rm = TRUE),
+# Index2015 = Valor / Mean2015 * 100,
+# Index2019 = Valor/ Valor[Fecha=="2019-12-31"]*100)
 
 ## 2. PIB 
 
@@ -247,6 +249,15 @@ pib_var_anual <- get_pib_data("67823", "Tasas", "Variación anual", "Variación_
 pib_D_val <- merge(pib_dato_base, pib_var_trimestral, by = c("Fecha", "Part3", "Part4", "Part5", "Part6"), all = TRUE) %>%
   merge(pib_var_anual, by = c("Fecha", "Part3", "Part4", "Part5", "Part6"), all = TRUE)
 
+pib_D_val <- pib_D_val %>%
+  rename(Valor = Dato_base) %>%   
+  mutate(
+    Part4 = ifelse(str_detect(Part4, "Precios corrientes"), "", Part4),                  # enlève "Precios corrientes"
+    Part5 = ifelse(str_detect(Part5, "Precios corrientes"), "", Part5),
+    Part6 = ifelse(str_detect(Part6, "Precios corrientes"), "", Part6)
+  ) %>%
+  arrange(Part3, Fecha)
+
 # 2.3. PIB - composantes de la demande - volume
 pib_dato_base_vol <- get_pib_data("67824", "Índice", "Datos ajustados de estacionalidad y calendario", "Dato_base")
 pib_var_trimestral_vol <- get_pib_data("67824", "Tasas", "Variación trimestral", "Variación_trimestral")
@@ -264,7 +275,7 @@ pib_D_vol <- pib_dato_base_vol %>%
 pib_D_vol <- pib_D_vol %>%
   rename(Indice = Dato_base) %>%
   mutate(
-    Part4 = ifelse(str_detect(Part4, "Índices de volumen encadenados"), "", Part4),
+    Part4 = ifelse(str_detect(Part4, "Índices de volumen encadenados"), "", Part4),       # enlève "Índices de volumen encadenados"
     Part5 = ifelse(str_detect(Part5, "Índices de volumen encadenados"), "", Part5),
     Part6 = ifelse(str_detect(Part6, "Índices de volumen encadenados"), "", Part6)
   ) %>%
@@ -275,8 +286,6 @@ pib_D_vol <- pib_D_vol %>%
     Index2019 = Indice / Indice[Fecha == as.Date("2019-10-01")] * 100
   ) %>%
   ungroup()
-
-
 
 # 2.4. PIB - offre - valeur
 pib_dato_base2 <- get_pib_data("67821", "Euros", "Datos ajustados de estacionalidad y calendario", "Dato_base")
@@ -301,7 +310,7 @@ pib_O_vol <- pib_dato_base_vol2 %>%
   merge(pib_aport_trimestral_vol2, by = c("Fecha", "Part3", "Part4", "Part5", "Part6"), all = TRUE)%>%
   select(-c(Part5,Part6))
 
-#PIB salaires
+# 2.6. Données de salaires par branche issues de la compta nat
 
 # Données en valeur absolue (euros)
 pib_dato_base_sal <- get_pib_data("67825", "Euros", "Datos ajustados de estacionalidad y calendario", "Dato_base")
@@ -326,7 +335,7 @@ pib_salaires <- pib_salaires %>%
   ungroup()
 
 
-#Emploi
+# 2.7. Données d'emploi total et d'emploi salarié / heures travaillées par branche issues de la compta nat
 
 data_Emploi <- get_data_table(
   idTable = "67827",  
@@ -349,6 +358,7 @@ data_Emploi <- data_Emploi %>%
     across(c(Part5, Part6), str_trim) # supprime espaces avant/après
   )
 
+# 2.8. Données de chômage issues de l'enquête EPA
 
 chomage <- get_data_table(
   idTable = "65334",  
@@ -365,7 +375,7 @@ chomage <- get_data_table(
   mutate(Fecha = as.Date(sub("T.*", "", Fecha)))%>%
   select(-c(COD,Part5, Part6,T3_TipoDato, T3_Periodo, T3_Escala,Anyo, T3_Unidad))
   
-#Ménages
+# 2.9. Compte des Ménages (comptes trim non financiers des secteurs institutionnels)- 1 trimestre de retard
 
 menage_data <- get_data_table(
   idTable = 62274,
@@ -413,7 +423,7 @@ menage_data2 <- get_data_table(
   select(-c(T3_Escala, COD, Part1, Part4, Part5, T3_Unidad, Anyo, T3_Periodo, Part6, T3_TipoDato))
   
 
-#Compte par agent 
+# 2.10. Recap compte par agent 
 
 comptes_agents <- get_data_table(
   idTable = 62265,

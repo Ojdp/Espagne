@@ -147,47 +147,34 @@ emploi_wide <- emploi_filtre %>%
 # Exporter vers Excel
 write.xlsx(emploi_wide, "emploi_total_salaries.xlsx")
 
+# 1. Exportations du PIB et des composantes de la demande en valeur vers excel
+# nettoyage de la base PIB et composantes de la demande en valeur
 pib_D_val_wide <- pib_D_val %>%
-  select(Fecha, Part3, Part4, Part5, Part6, Dato_base) %>% 
-  mutate(variable = paste(
-    Part3,
-    ifelse(Part4 != "", Part4, ""),
-    ifelse(Part5 != "", Part5, ""),
-    ifelse(Part6 != "", Part6, ""),
-    sep = " - "
-  )) %>%
-  mutate(variable = gsub(" - - ", " - ", variable),
-         variable = gsub(" - $", "", variable),
-         variable = gsub("^ - ", "", variable)) %>%
+  select(Fecha, Part3, Part4, Part5, Part6, Valor) %>% 
+  mutate(
+    variable = pmap_chr(                                              # pmap : ici pmap_chr renvoie une chaine de caractères pour chaque ligne. Permet d'appliquer une fonction à plusieurs colonnes en parallèle 
+      list(Part3, Part4, Part5, Part6),                     # applique la fonction aux colonnes Part3, Part4, Part5, Part6
+      ~ paste(c(...)[c(...) != ""], collapse = " - ")       # c(...) construit un vecteur c(Part3, Part4, Part5, Part6) car ... représente les arguments reçus  précédemment
+    )) %>%   
   select(-Part3, -Part4, -Part5, -Part6) %>%
   pivot_wider(
     names_from = variable, 
-    values_from = Dato_base,
+    values_from = Valor,
     values_fn = \(x) x[1]  # prend juste la première valeur
   )
 
-
+# export vers excel
 write_xlsx(pib_D_val_wide, "pib_D_val.xlsx")
 
-
-
+# 2. Exportations du PIB et des composantes de la demande en volume vers excel
+# nettoyage de la base PIB et composantes de la demande en volume
 pib_D_vol_wide <- pib_D_vol %>%
   select(Fecha, Part3, Part4, Part5, Part6, Indice) %>% 
-  pmap_chr(                                            # pmap : ici pmap_chr renvoie une chaine de caractères pour chaque ligne. Permet d'appliquer une fonction à plusieurs colonnes en parallèle 
-   list(Part3, Part4, Part5, Part6),                   # applique la fonction aux colonnes Part3, Part4, Part5, Part6
-   ~ paste(c(...)[c(...) != ""], collapse = " - ")     # construit un vecteur c(Part3, Part4, Part5, Part6)
-  )
-  # mutate(variable = paste(
-  #   Part3,
-  #   ifelse(Part4 != "", Part4, ""),
-  #   ifelse(Part5 != "", Part5, ""),
-  #   ifelse(Part6 != "", Part6, ""),
-  #   sep = " - "
-  # )) %>%
-  # mutate( variable = gsub(" - +", " - ", variable), # supprime répétitions 
-  #         variable = gsub(" - $", "", variable), # supprime tiret final 
-  #         variable = gsub("^ - ", "", variable), # supprime tiret initial 
-  #         variable = trimws(variable)) %>%
+  mutate(
+    variable = pmap_chr(                                              # pmap : ici pmap_chr renvoie une chaine de caractères pour chaque ligne. Permet d'appliquer une fonction à plusieurs colonnes en parallèle 
+   list(Part3, Part4, Part5, Part6),                     # applique la fonction aux colonnes Part3, Part4, Part5, Part6
+   ~ paste(c(...)[c(...) != ""], collapse = " - ")       # c(...) construit un vecteur c(Part3, Part4, Part5, Part6) car ... représente les arguments reçus  précédemment
+  )) %>%                                                      # collapse : colle les éléments avec "-" ici 
   select(-Part3, -Part4, -Part5, -Part6) %>%
   pivot_wider(
     names_from = variable, 
@@ -195,6 +182,7 @@ pib_D_vol_wide <- pib_D_vol %>%
     values_fn = \(x) x[1]  # prend juste la première valeur s'il y a plusieurs combinaisons Fecha + variable
   )
 
+# export vers excel
 write_xlsx(pib_D_vol_wide, "pib_D_vol.xlsx")
 
 menage_filtre <- menage_data %>%
