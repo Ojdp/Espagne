@@ -6,6 +6,8 @@ library(tidyr)
 library(readxl)
 library(openxlsx)
 library(writexl)
+library(purrr)
+
 # ------------------------------
 # 1. Charger ton fichier Excel modèle
 # ------------------------------
@@ -171,21 +173,26 @@ write_xlsx(pib_D_val_wide, "pib_D_val.xlsx")
 
 pib_D_vol_wide <- pib_D_vol %>%
   select(Fecha, Part3, Part4, Part5, Part6, Indice) %>% 
-  mutate(variable = paste(
-    Part3,
-    ifelse(Part4 != "", Part4, ""),
-    ifelse(Part5 != "", Part5, ""),
-    ifelse(Part6 != "", Part6, ""),
-    sep = " - "
-  )) %>%
-  mutate(variable = gsub(" - - ", " - ", variable),
-         variable = gsub(" - $", "", variable),
-         variable = gsub("^ - ", "", variable)) %>%
+  pmap_chr(                                            # pmap : ici pmap_chr renvoie une chaine de caractères pour chaque ligne. Permet d'appliquer une fonction à plusieurs colonnes en parallèle 
+   list(Part3, Part4, Part5, Part6),                   # applique la fonction aux colonnes Part3, Part4, Part5, Part6
+   ~ paste(c(...)[c(...) != ""], collapse = " - ")     # construit un vecteur c(Part3, Part4, Part5, Part6)
+  )
+  # mutate(variable = paste(
+  #   Part3,
+  #   ifelse(Part4 != "", Part4, ""),
+  #   ifelse(Part5 != "", Part5, ""),
+  #   ifelse(Part6 != "", Part6, ""),
+  #   sep = " - "
+  # )) %>%
+  # mutate( variable = gsub(" - +", " - ", variable), # supprime répétitions 
+  #         variable = gsub(" - $", "", variable), # supprime tiret final 
+  #         variable = gsub("^ - ", "", variable), # supprime tiret initial 
+  #         variable = trimws(variable)) %>%
   select(-Part3, -Part4, -Part5, -Part6) %>%
   pivot_wider(
     names_from = variable, 
     values_from = Indice,
-    values_fn = \(x) x[1]  # prend juste la première valeur
+    values_fn = \(x) x[1]  # prend juste la première valeur s'il y a plusieurs combinaisons Fecha + variable
   )
 
 write_xlsx(pib_D_vol_wide, "pib_D_vol.xlsx")

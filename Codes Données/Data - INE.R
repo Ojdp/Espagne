@@ -1,8 +1,8 @@
 # Charger les bibliothèques nécessaires
 
-install.packages("seasonal")
-install.packages("ineapir")
-install.packages("openxlsx")
+# install.packages("seasonal")
+# install.packages("ineapir")
+# install.packages("openxlsx")
 
 library(writexl)
 library(openxlsx)
@@ -25,6 +25,8 @@ ls("package:ineapir")
 
 # Directly call the API URL
 response <- GET("https://servicios.ine.es/wstempus/js/ES/DATOS_SERIE?nult=1&det=0&ver=3")
+
+## 1. IPC
 
 # Récupérer les données de la série IPC avec les paramètres définis
 ipc_dataAnnuel <- get_data_series(
@@ -210,9 +212,9 @@ select(-c(COD.x, T3_Unidad))%>%
 Index2015 = Valor / Mean2015 * 100,
 Index2019 = Valor/ Valor[Fecha=="2019-12-31"]*100)
 
+## 2. PIB 
 
-#PIB côté demande, prix courant
-
+# 2.1. fonction pour récupérer les données de compta nat
 get_pib_data <- function(idTable, unit_filter, keyword, rename_col) {
   get_data_table(
     idTable = idTable,  
@@ -237,9 +239,7 @@ get_pib_data <- function(idTable, unit_filter, keyword, rename_col) {
     select(Fecha, Part3, Part4, Part5, Part6, !!rename_col)
 }
 
-
-
-#PIB côté demande
+# 2.2. PIB - composantes de la demande - valeur (niveau, variation trim et variation annuelle)
 pib_dato_base <- get_pib_data("67823", "Euros", "Datos ajustados de estacionalidad y calendario", "Dato_base")
 pib_var_trimestral <- get_pib_data("67823", "Tasas", "Variación trimestral", "Variación_trimestral")
 pib_var_anual <- get_pib_data("67823", "Tasas", "Variación anual", "Variación_anual")
@@ -247,6 +247,7 @@ pib_var_anual <- get_pib_data("67823", "Tasas", "Variación anual", "Variación_
 pib_D_val <- merge(pib_dato_base, pib_var_trimestral, by = c("Fecha", "Part3", "Part4", "Part5", "Part6"), all = TRUE) %>%
   merge(pib_var_anual, by = c("Fecha", "Part3", "Part4", "Part5", "Part6"), all = TRUE)
 
+# 2.3. PIB - composantes de la demande - volume
 pib_dato_base_vol <- get_pib_data("67824", "Índice", "Datos ajustados de estacionalidad y calendario", "Dato_base")
 pib_var_trimestral_vol <- get_pib_data("67824", "Tasas", "Variación trimestral", "Variación_trimestral")
 pib_var_anual_vol <- get_pib_data("67824", "Tasas", "Variación anual", "Variación_anual")
@@ -277,8 +278,7 @@ pib_D_vol <- pib_D_vol %>%
 
 
 
-#PIB côté offre
-
+# 2.4. PIB - offre - valeur
 pib_dato_base2 <- get_pib_data("67821", "Euros", "Datos ajustados de estacionalidad y calendario", "Dato_base")
 pib_var_trimestral2 <- get_pib_data("67821", "Tasas", "Variación trimestral", "Variación_trimestral")
 pib_var_anual2 <- get_pib_data("67821", "Tasas", "Variación anual", "Variación_anual")
@@ -287,7 +287,7 @@ pib_O_val <- merge(pib_dato_base2, pib_var_trimestral2, by = c("Fecha", "Part3",
   merge(pib_var_anual2, by = c("Fecha", "Part3", "Part4", "Part5", "Part6"), all = TRUE)%>%
 select(-c(Part5,Part6))
 
-
+# 2.5. PIB - offre - volume
 pib_dato_base_vol2 <- get_pib_data("67822", "Índice", "Datos ajustados de estacionalidad y calendario", "Dato_base")
 pib_var_trimestral_vol2 <- get_pib_data("67822", "Tasas", "Variación trimestral", "Variación_trimestral")
 pib_var_anual_vol2 <- get_pib_data("67822", "Tasas", "Variación anual", "Variación_anual")
