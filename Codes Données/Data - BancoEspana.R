@@ -52,7 +52,10 @@ url <- "https://www.bde.es/webbe/es/estadisticas/compartido/datos/xlsx/be1502.xl
 temp_file <- tempfile(fileext = ".xlsx")
 GET(url, write_disk(temp_file, overwrite = TRUE))
 
-entreprise <- read_excel(temp_file, sheet = 1)
+entreprise <- read_excel(temp_file, sheet = 1)%>%
+select(serie = 2)%>% 
+slice(-1:-5)      # supprime les lignes de métadonnées
+  
 
 head(df)
 

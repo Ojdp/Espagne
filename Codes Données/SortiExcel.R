@@ -9,9 +9,9 @@ library(writexl)
 # ------------------------------
 # 1. Charger ton fichier Excel modèle
 # ------------------------------
-fichier_excel <- "H:/Drive partagés/DAP/donnees_conj/Espagne/Donnees/Comptabilite nationale/D_PIB_VA.xlsx"
+#fichier_excel <- "H:/Drive partagés/DAP/donnees_conj/Espagne/Donnees/Comptabilite nationale/D_PIB_VA.xlsx"
 # <-- Remplace par le chemin réel
-excel_data <- read_excel(fichier_excel)
+#excel_data <- read_excel(fichier_excel)
 
 # ------------------------------
 # 2. Table de correspondance colonnes (À COMPLÉTER)
@@ -59,45 +59,61 @@ correspondance <- tribble(
   
   "Spain, Production Approach, Taxes On Products, Taxes On Products, Total, Constant Prices, Calendar Adjusted, SA, Index, 2020 = 100",
   "Impuestos menos subvenciones sobre los productos"
-  # Tu peux compléter pour les colonnes prix courants (Euro)
+  
 )
 
-make_wide <- function(df_long, suffix) {
+make_wide <- function(df, value_col, suffix = "", file = NULL) {
   
-  df_wide <- df_long %>%
-    select(Fecha, Part3, Part4, Dato_base) %>% 
-    mutate(variable = ifelse(
-      Part4 != "",
-      paste(Part3, Part4, sep = " - "),
-      Part3
-    )) %>%
-    select(-Part3, -Part4) %>%
-    pivot_wider(names_from = variable, values_from = Dato_base)
+  part_cols <- intersect(
+    c("Part3", "Part4", "Part5", "Part6"),
+    colnames(df)
+  )
   
-  # Renommage ES -> EN
-  for (i in 1:nrow(correspondance)) {
-    old <- correspondance$col_df[i]
-    new <- correspondance$col_excel[i]
-    names(df_wide)[names(df_wide) == old] <- new
+  wide_df <- df %>%
+    select(Fecha, all_of(part_cols), {{ value_col }}) %>%
+    mutate(
+      variable = apply(
+        select(., all_of(part_cols)),
+        1,
+        function(x) paste(x[x != ""], collapse = " - ")
+      ),
+      variable = paste0(variable, suffix)
+    ) %>%
+    select(-all_of(part_cols)) %>%
+    pivot_wider(
+      names_from = variable,
+      values_from = {{ value_col }},
+      values_fn = \(x) x[1]
+    )
+  
+  if (!is.null(file)) {
+    write_xlsx(wide_df, file)
   }
   
-  # Ajout suffixe (_volume / _value)
-  names(df_wide)[-1] <- paste0(names(df_wide)[-1], suffix)
-  
-  return(df_wide)
+  wide_df
 }
 
-# ============================================================
-# 3. Construire les tables volume et valeur
-# ============================================================
-pib_vol_wide <- make_wide(pib_O_vol, "_volume")
-pib_val_wide <- make_wide(pib_O_val, "_value")
+##PIB
+#Offre
+pib_O_vol_wide <- make_wide(pib_O_vol, Dato_base, "_volume", file = "pib_O_vol.xlsx")
 
-# ============================================================
-# 4. Fusion volume + valeur
-# ============================================================
-pib_vol_val_secteurs <- pib_vol_wide %>%
-  left_join(pib_val_wide, by = "Fecha")
+pib_O_val_wide <- make_wide(pib_O_val, Dato_base, "_valeur", file = "pib_O_val.xlsx")
+
+pib_O_vol_val<- pib_O_vol_wide %>%
+  left_join(pib_O_val_wide, by = "Fecha")
+
+write_xlsx(pib_O_vol_val, "pib_O_vol_val.xlsx")
+
+#Demande
+pib_D_vol_wide <- make_wide(pib_D_vol, Indice, "_volume")
+
+pib_D_val_wide <- make_wide(pib_D_val, Dato_base, "_value")
+
+pib_D_vol_val <- pib_D_vol_wide %>%
+  left_join(pib_D_val_wide, by = "Fecha")
+
+write_xlsx(pib_D_vol_wide, "pib_D_vol.xlsx")
+
 
 
 # ============================================================
@@ -107,6 +123,7 @@ output_path <- "/GitHub/Espagne/Codes Données/Sorties Excel/PIB_VA_Secteurs_vol
 
 write_xlsx(pib_vol_val_secteurs, output_path)
 
+#emploi
 
 emploi_filtre <- data_Emploi %>%
   filter(Part3 == "Horas trabajadas", Part1 == "Asalariados", Part6 == "Dato base.")
@@ -145,50 +162,7 @@ emploi_wide <- emploi_filtre %>%
 # Exporter vers Excel
 write.xlsx(emploi_wide, "emploi_total_salaries.xlsx")
 
-pib_D_val_wide <- pib_D_val %>%
-  select(Fecha, Part3, Part4, Part5, Part6, Dato_base) %>% 
-  mutate(variable = paste(
-    Part3,
-    ifelse(Part4 != "", Part4, ""),
-    ifelse(Part5 != "", Part5, ""),
-    ifelse(Part6 != "", Part6, ""),
-    sep = " - "
-  )) %>%
-  mutate(variable = gsub(" - - ", " - ", variable),
-         variable = gsub(" - $", "", variable),
-         variable = gsub("^ - ", "", variable)) %>%
-  select(-Part3, -Part4, -Part5, -Part6) %>%
-  pivot_wider(
-    names_from = variable, 
-    values_from = Dato_base,
-    values_fn = \(x) x[1]  # prend juste la première valeur
-  )
 
-
-write_xlsx(pib_D_val_wide, "pib_D_val.xlsx")
-
-
-
-pib_D_vol_wide <- pib_D_vol %>%
-  select(Fecha, Part3, Part4, Part5, Part6, Indice) %>% 
-  mutate(variable = paste(
-    Part3,
-    ifelse(Part4 != "", Part4, ""),
-    ifelse(Part5 != "", Part5, ""),
-    ifelse(Part6 != "", Part6, ""),
-    sep = " - "
-  )) %>%
-  mutate(variable = gsub(" - - ", " - ", variable),
-         variable = gsub(" - $", "", variable),
-         variable = gsub("^ - ", "", variable)) %>%
-  select(-Part3, -Part4, -Part5, -Part6) %>%
-  pivot_wider(
-    names_from = variable, 
-    values_from = Indice,
-    values_fn = \(x) x[1]  # prend juste la première valeur
-  )
-
-write_xlsx(pib_D_vol_wide, "pib_D_vol.xlsx")
 
 menage_filtre <- menage_data %>%
   filter(Part4 == "Empleos", Part5 == "Dato base")
