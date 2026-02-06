@@ -140,44 +140,43 @@ ponderation <- get_data_table(
   select(-Nombre,-COD, -Nivel, -Tipo,-T3_Periodo,-Anyo, -T3_TipoDato, -T3_Escala, -T3_Unidad)
 
 # Fetch data from the table for PIB, Current prices
-# pib_dataS <- get_data_table(
-# idTable = "67821",            # Table ID for PIB
-# filter = NULL,                # No additional filters
-# nlast = NULL,                 # Retrieve all available periods
-# det = 0,                      # Detail level: 0 for basic information
-# tip = "A",                    # Readable output format
-# lang = "ES",                  # Language: Spanish
-# validate = TRUE,              # Validate parameters
-# verbose = TRUE,               # Display the generated URL
-# unnest = TRUE                 # Return data as a single dataframe
-# )%>%
-# separate(
-# col = Nombre,               # La colonne à séparer
-# into = c("Part1", "Part2", "Part3", "Part4", "Part5"),  # Noms des nouvelles colonnes
-# sep = "\\. ",               # Séparateur : point suivi d'un espace
-# fill = "right",             # Remplit les colonnes manquantes avec NA si besoin
-# extra = "merge"             # Conserve les parties non divisées dans la dernière colonne
-#  )%>%
-# filter(Part2 == "Datos ajustados de estacionalidad y calendario")%>%
-# select (-c(Part1,T3_TipoDato,T3_Periodo, Anyo ))%>%
-# mutate(
-# Fecha = as.Date(ymd_hms(Fecha)),
-# Part3 = ifelse(Part3 %in% c("VABpb Servicios", "VABpb Industria"), Part4, Part3),
-# Part4 = Part4 %>%
-# str_replace("Industria manufacturera \\(C, CNAE 2009\\)", "") %>%
-# str_replace("Precios corrientes", "") %>%  # Correction ici pour supprimer "Precios corrientes"
-# str_trim() %>%
-# ifelse(. %in% c("Dato base", "Variación trimestral", "Variación anual"), ., "") %>%
-# ifelse(. == "", Part5, .),
-# Part4 = str_replace(Part4, "Variación trimestral\\. Precios corrientes\\.", "Variación trimestral"),
-# Part4 = str_replace(Part4, "Variación anual\\. Precios corrientes\\.", "Variación anual"),
-# Part4 = str_replace(Part4, "Dato base\\. Precios corrientes\\.", "Dato base"),
-# T3_Unidad = ifelse(T3_Unidad == "Euros", "Millones Euros", T3_Unidad)
-# ) %>%
-# arrange(Fecha)%>%
-# group_by(Part3)%>%
-# group_by(Part4)%>%
-# select(-c(T3_Escala, Part5, Part2))
+pib_dataS <- get_data_table(
+idTable = "67821",            # Table ID for PIB
+filter = NULL,                # No additional filters
+nlast = NULL,                 # Retrieve all available periods
+det = 0,                      # Detail level: 0 for basic information
+tip = "A",                    # Readable output format
+lang = "ES",                  # Language: Spanish
+validate = TRUE,              # Validate parameters
+verbose = TRUE,               # Display the generated URL
+ unnest = TRUE                 # Return data as a single dataframe
+ )%>%
+ separate(
+ col = Nombre,               # La colonne à séparer
+into = c("Part1", "Part2", "Part3", "Part4", "Part5"),  # Noms des nouvelles colonnes
+ sep = "\\. ",               # Séparateur : point suivi d'un espace
+ fill = "right",             # Remplit les colonnes manquantes avec NA si besoin
+extra = "merge"             # Conserve les parties non divisées dans la dernière colonne
+ )%>%
+filter(Part2 == "Datos ajustados de estacionalidad y calendario")%>%
+select (-c(Part1,T3_TipoDato,T3_Periodo, Anyo ))%>%
+mutate(
+Fecha = as.Date(ymd_hms(Fecha)),
+Part3 = ifelse(Part3 %in% c("VABpb Servicios", "VABpb Industria"), Part4, Part3),
+Part4 = Part4 %>%
+str_replace("Industria manufacturera \\(C, CNAE 2009\\)", "") %>%
+str_replace("Precios corrientes", "") %>%  # Correction ici pour supprimer "Precios corrientes"
+str_trim() %>%
+ifelse(. %in% c("Dato base", "Variación trimestral", "Variación anual"), ., "") %>%
+ ifelse(. == "", Part5, .),
+ Part4 = str_replace(Part4, "Variación trimestral\\. Precios corrientes\\.", "Variación trimestral"),
+Part4 = str_replace(Part4, "Variación anual\\. Precios corrientes\\.", "Variación anual"),
+Part4 = str_replace(Part4, "Dato base\\. Precios corrientes\\.", "Dato base"),
+T3_Unidad = ifelse(T3_Unidad == "Euros", "Millones Euros", T3_Unidad) ) %>%
+arrange(Fecha)%>%
+group_by(Part3)%>%
+group_by(Part4)%>%
+select(-c(T3_Escala, Part5, Part2))
 
 # pib_data_wider <- pib_dataS %>%
 #   filter(Part4 == "Variación trimestral") %>%  # Filtrer uniquement les lignes correspondantes
@@ -719,3 +718,4 @@ head(data)
 
 
 #comptes des SNF à télécharger : 62271
+

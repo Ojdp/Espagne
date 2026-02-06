@@ -21,6 +21,7 @@ deuda_df <- read_excel("be1107.xlsx", sheet = 1) %>%
 filter(!is.na(Fecha))
 
 
+
 url <- "https://www.bde.es/webbe/es/estadisticas/compartido/datos/xlsx/be1109.xlsx"
 
 temp_file <- tempfile(fileext = ".xlsx")
@@ -52,8 +53,16 @@ url <- "https://www.bde.es/webbe/es/estadisticas/compartido/datos/xlsx/be1502.xl
 temp_file <- tempfile(fileext = ".xlsx")
 GET(url, write_disk(temp_file, overwrite = TRUE))
 
-entreprise <- read_excel(temp_file, sheet = 1)
+entreprise <- read_excel(temp_file, sheet = 1)%>%
+  { 
+    colnames(.) <- as.character(unlist(.[3, ]))
+    .
+  } %>%
+slice(-1:-5)
 
-head(df)
+colnames(entreprise) <- colnames(entreprise) %>%
+  str_replace("^CBT\\.\\s*", "") %>%                 # enlève "CBT. "
+  str_replace("\\. Total empresas\\. Tasa$", "")%>%
+  str_replace("^DESCRIPCIÓN DE LA SERIE$", "Fecha")
 
 
