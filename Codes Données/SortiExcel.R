@@ -267,3 +267,10 @@ pib_final <- pib_final %>%
 
 # --- 7. Export Excel ---
 write.xlsx(pib_final, "pib_final_2.xlsx", overwrite = TRUE)
+
+#Données Banque D'espagne
+
+write_xlsx(deuda_df, "deuda_publica.xlsx")
+write_xlsx(solde_df, "solde_public.xlsx")
+write_xlsx(macro_df, "macro_solde_dette.xlsx")
+write_xlsx(entreprise, "comptes_entreprises.xlsx")
