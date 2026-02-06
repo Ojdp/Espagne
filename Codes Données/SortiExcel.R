@@ -7,6 +7,7 @@ library(readxl)
 library(openxlsx)
 library(writexl)
 library(purrr)
+library(here)
 
 # ------------------------------
 # 1. Charger ton fichier Excel modèle
@@ -15,6 +16,7 @@ library(purrr)
 # <-- Remplace par le chemin réel
 #excel_data <- read_excel(fichier_excel)
 
+output_dir <- here("Codes Données", "Sorties Excel")
 # ------------------------------
 # 2. Table de correspondance colonnes (À COMPLÉTER)
 # ------------------------------
@@ -64,21 +66,19 @@ correspondance <- tribble(
   
 )
 
-make_wide <- function(df, value_col, suffix = "", file = NULL) {
+
+# Fonction make_wide modifiée
+make_wide <- function(df, value_col, suffix = "", file_name = NULL) {
   
-  part_cols <- intersect(
-    c("Part3", "Part4", "Part5", "Part6"),
-    colnames(df)
-  )
+  # Colonnes pour créer le nom des variables
+  part_cols <- intersect(c("Part3", "Part4", "Part5", "Part6"), colnames(df))
   
+  # Construction du data frame wide
   wide_df <- df %>%
     select(Fecha, all_of(part_cols), {{ value_col }}) %>%
     mutate(
-      variable = apply(
-        select(., all_of(part_cols)),
-        1,
-        function(x) paste(x[x != ""], collapse = " - ")
-      ),
+      variable = apply(select(., all_of(part_cols)), 1,
+                       function(x) paste(x[x != ""], collapse = " - ")),
       variable = paste0(variable, suffix)
     ) %>%
     select(-all_of(part_cols)) %>%
@@ -88,34 +88,35 @@ make_wide <- function(df, value_col, suffix = "", file = NULL) {
       values_fn = \(x) x[1]
     )
   
-  if (!is.null(file)) {
-    write_xlsx(wide_df, file)
+  # Écriture automatique dans le dossier output_dir si file_name fourni
+  if (!is.null(file_name)) {
+    write_xlsx(wide_df, file.path(output_dir, file_name))
   }
   
   wide_df
 }
 
-##PIB
-#Offre
-pib_O_vol_wide <- make_wide(pib_O_vol, Dato_base, "_volume", file = "pib_O_vol.xlsx")
+## ======================
+## Utilisation pour PIB
+## ======================
 
-pib_O_val_wide <- make_wide(pib_O_val, Dato_base, "_valeur", file = "pib_O_val.xlsx")
+# Offre
+pib_O_vol_wide <- make_wide(pib_O_vol, Dato_base, "_volume", "pib_O_vol.xlsx")
+pib_O_val_wide <- make_wide(pib_O_val, Dato_base, "_valeur", "pib_O_val.xlsx")
 
-pib_O_vol_val<- pib_O_vol_wide %>%
+pib_O_vol_val <- pib_O_vol_wide %>%
   left_join(pib_O_val_wide, by = "Fecha")
 
-write_xlsx(pib_O_vol_val, "pib_O_vol_val.xlsx")
+write_xlsx(pib_O_vol_val, file.path(output_dir, "pib_O_vol_val.xlsx"))
 
-#Demande
-pib_D_vol_wide <- make_wide(pib_D_vol, Indice, "_volume")
-
-pib_D_val_wide <- make_wide(pib_D_val, Dato_base, "_value")
+# Demande
+pib_D_vol_wide <- make_wide(pib_D_vol, Indice, "_volume", "pib_D_vol.xlsx")
+pib_D_val_wide <- make_wide(pib_D_val, Dato_base, "_value", "pib_D_val.xlsx")
 
 pib_D_vol_val <- pib_D_vol_wide %>%
   left_join(pib_D_val_wide, by = "Fecha")
 
-write_xlsx(pib_D_vol_wide, "pib_D_vol.xlsx")
-
+write_xlsx(pib_D_vol_val, file.path(output_dir, "pib_D_vol_val.xlsx"))
 
 
 # ============================================================
